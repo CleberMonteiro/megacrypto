@@ -1,64 +1,79 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGACRYPTO | Telegram Web3 Lottery</title>
-    <!-- Tailwind para Design de Elite -->
+
+    <!-- Força a renderização em Modo Escuro em qualquer dispositivo -->
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#030303">
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SDK Oficial do Telegram Mini Apps -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Ethers.js v6 para interação com a Blockchain -->
+    <!-- Ethers.js v6 para Web3 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    <!-- Web3Modal / WalletConnect AppKit para conexão mobile perfeita -->
-    <script type="module">
-        import { createWeb3Modal, defaultWagmiConfig } from 'https://esm.sh/@web3modal/wagmi@3.5.0';
-        import { reconnect, watchAccount, getSigner } from 'https://esm.sh/@wagmi/core@2.0.0';
-    </script>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
     <style>
         :root { --p-color: #a855f7; --s-color: #ec4899; }
-        body { background-color: #030303; color: #f3f4f6; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* Trava o fundo e texto para nunca ficarem brancos */
+        html, body { 
+            background-color: #030303 !important; 
+            color: #f3f4f6 !important; 
+            font-family: 'Inter', sans-serif; 
+            overflow-x: hidden;
+            color-scheme: dark !important;
+        }
+
         .font-tech { font-family: 'Orbitron', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.01); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .neon-glow { box-shadow: 0 0 25px rgba(168, 85, 247, 0.15); }
+        
         .selected-num { 
             background: linear-gradient(135deg, var(--p-color), var(--s-color)) !important; 
             color: white !important; 
             transform: translateY(-2px); 
             box-shadow: 0 8px 20px rgba(168, 85, 247, 0.4);
-            border-color: rgba(255,255,255,0.2) !important;
+            border-color: rgba(255,255,255,0.3) !important;
         }
+        
         .btn-grad { background: linear-gradient(90deg, #7c3aed, #db2777); transition: all 0.3s ease; }
         .btn-grad:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+
+        select option {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+        }
+
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
     </style>
 </head>
-<body class="min-h-screen pb-12">
+<body class="bg-[#030303] text-gray-100 min-h-screen pb-12">
 
     <!-- Header / Nav -->
-    <nav class="sticky top-0 z-50 glass border-b border-white/5 px-4 py-3">
+    <nav class="sticky top-0 z-50 glass border-b border-white/10 px-4 py-3">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div class="text-xl font-tech font-bold text-white tracking-tighter">
                 MEGA<span class="text-purple-500">CRYPTO</span>
             </div>
             
             <div class="flex items-center gap-3">
-                <select id="langSelector" class="bg-black/50 border border-white/10 rounded-lg text-xs p-1.5 text-gray-400 focus:outline-none">
+                <select id="langSelector" class="bg-black/80 border border-white/20 rounded-lg text-xs p-1.5 text-gray-200 focus:outline-none">
                     <option value="pt">🇧🇷 PT</option>
                     <option value="en">🇺🇸 EN</option>
                     <option value="es">🇪🇸 ES</option>
                     <option value="zh">🇨🇳 中文</option>
                     <option value="fr">🇫🇷 FR</option>
                 </select>
-                <!-- O Botão de Conectar padrão do Web3Modal -->
-                <div id="walletConnectContainer">
-                    <button id="connectBtn" class="btn-grad text-white px-4 py-2 rounded-full font-bold text-xs shadow-md">
-                        Connect
-                    </button>
-                </div>
+                <button id="connectBtn" class="btn-grad text-white px-4 py-2 rounded-full font-bold text-xs shadow-md">
+                    Connect
+                </button>
             </div>
         </div>
     </nav>
@@ -67,59 +82,58 @@
         
         <!-- Hero / Jackpot Card -->
         <section class="relative mb-8">
-            <div class="glass rounded-[35px] p-8 text-center border-t border-purple-500/20 neon-glow">
+            <div class="glass rounded-[35px] p-8 text-center border-t border-purple-500/30 neon-glow">
                 <h2 data-i18n="jackpotLabel" class="text-purple-400 font-tech text-[10px] tracking-[0.3em] uppercase mb-2">Prêmio Acumulado</h2>
                 <div class="text-5xl md:text-7xl font-tech font-extrabold text-white mb-4 tracking-tight">
                     $ <span id="jackpotValue">0.00</span>
                 </div>
-                <div class="flex justify-center gap-3 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                <div class="flex justify-center gap-3 text-[9px] font-bold uppercase tracking-widest text-gray-400">
                     <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse"></span> Polygon Network</span>
                     <span class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 bg-blue-500 rounded-full"></span> VRF Verified</span>
                 </div>
             </div>
         </section>
 
-        <!-- Dashboard do Ganhador (Alerta Dinâmico) -->
-        <div id="winnerPanel" class="hidden glass rounded-2xl p-6 mb-8 border-green-500/30 bg-green-500/5 animate-pulse">
+        <!-- Dashboard do Ganhador -->
+        <div id="winnerPanel" class="hidden glass rounded-2xl p-6 mb-8 border-green-500/40 bg-green-500/10 animate-pulse">
             <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div class="text-center sm:text-left">
                     <h3 class="text-lg font-tech font-bold text-green-400" data-i18n="winnerTitle">VOCÊ GANHOU!</h3>
-                    <p class="text-gray-400 text-xs" data-i18n="winnerSub">Seu prêmio está pronto para saque imediato.</p>
+                    <p class="text-gray-300 text-xs" data-i18n="winnerSub">Seu prêmio está pronto para saque imediato.</p>
                 </div>
                 <div class="flex gap-2 w-full sm:w-auto">
-                    <button id="btnClaim" class="flex-1 sm:flex-none bg-green-600 px-6 py-2.5 rounded-lg font-bold text-xs hover:bg-green-700">WITHDRAW</button>
-                    <button onclick="share()" class="flex-1 sm:flex-none bg-white/5 px-6 py-2.5 rounded-lg font-bold text-xs border border-white/10">SHARE 🚀</button>
+                    <button id="btnClaim" class="flex-1 sm:flex-none bg-green-600 px-6 py-2.5 rounded-lg font-bold text-xs text-white hover:bg-green-700">WITHDRAW</button>
+                    <button onclick="share()" class="flex-1 sm:flex-none bg-white/10 px-6 py-2.5 rounded-lg font-bold text-xs text-white border border-white/20">SHARE 🚀</button>
                 </div>
             </div>
         </div>
 
-        <!-- Jogo e Sidebar unificados para Mobile -->
+        <!-- Jogo Principal -->
         <section class="space-y-6 mb-8">
-            <!-- Grid Selector -->
             <div class="glass rounded-[30px] p-6 md:p-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 data-i18n="playTitle" class="text-lg font-tech font-bold">FAÇA SUA JOGADA</h3>
-                    <div class="text-2xl font-tech text-purple-500"><span id="selCount">0</span>/15</div>
+                    <h3 data-i18n="playTitle" class="text-lg font-tech font-bold text-white">FAÇA SUA JOGADA</h3>
+                    <div class="text-2xl font-tech text-purple-400"><span id="selCount">0</span>/15</div>
                 </div>
                 
                 <div id="grid" class="grid grid-cols-5 gap-2 md:gap-3 mb-8"></div>
                 
-                <div class="flex flex-col sm:flex-row gap-4 justify-between items-center pt-6 border-t border-white/5">
-                    <div class="text-xs text-gray-500">
+                <div class="flex flex-col sm:flex-row gap-4 justify-between items-center pt-6 border-t border-white/10">
+                    <div class="text-xs text-gray-400">
                         <p><span data-i18n="cost">Custo</span>: <span id="ticketCostText" class="text-white font-bold">5.00 USDT</span></p>
                     </div>
                     <div class="flex gap-3 w-full sm:w-auto">
-                        <button id="btnApprove" class="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-white/5 font-bold text-xs text-gray-500 cursor-not-allowed opacity-50" disabled>1. APPROVE</button>
-                        <button id="btnBuy" class="flex-1 sm:flex-none px-6 py-3 rounded-xl btn-grad font-bold text-xs opacity-50 text-white" disabled>2. PLAY NOW</button>
+                        <button id="btnApprove" class="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-white/10 font-bold text-xs text-gray-400 cursor-not-allowed opacity-50" disabled data-i18n="btnApprove">1. APPROVE</button>
+                        <button id="btnBuy" class="flex-1 sm:flex-none px-6 py-3 rounded-xl btn-grad font-bold text-xs opacity-50 text-white" disabled data-i18n="btnBuy">2. PLAY NOW</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Como Funciona / Regras Acoplados -->
+            <!-- Como Funciona / Regras -->
             <div class="grid md:grid-cols-2 gap-6">
                 <div class="glass rounded-2xl p-6 border-l-2 border-purple-500">
                     <h4 data-i18n="howTitle" class="font-tech text-xs text-purple-400 mb-4 uppercase tracking-wider">Como Funciona</h4>
-                    <ul class="space-y-3 text-[11px] text-gray-400 leading-relaxed">
+                    <ul class="space-y-3 text-[11px] text-gray-300 leading-relaxed">
                         <li><b>01.</b> <span data-i18n="step1">Conecte sua carteira Polygon (USDT).</span></li>
                         <li><b>02.</b> <span data-i18n="step2">Escolha seus 15 números da sorte.</span></li>
                         <li><b>03.</b> <span data-i18n="step3">Confirme a transação de USDT.</span></li>
@@ -127,45 +141,45 @@
                     </ul>
                 </div>
                 <div class="glass rounded-2xl p-6 border-l-2 border-pink-500">
-                    <h4 data-i18n="rulesTitle" class="font-tech text-xs text-pink-500 mb-4 uppercase tracking-wider">Regras do Pool</h4>
-                    <ul class="space-y-3 text-[11px] text-gray-400">
-                        <li class="flex items-center gap-2"><div class="h-1 w-1 bg-pink-500 rounded-full"></div> <span data-i18n="rule1">60% acumula para Jackpot.</span></li>
-                        <li class="flex items-center gap-2"><div class="h-1 w-1 bg-pink-500 rounded-full"></div> <span data-i18n="rule2">39% sai toda semana.</span></li>
-                        <li class="flex items-center gap-2"><div class="h-1 w-1 bg-pink-500 rounded-full"></div> <span data-i18n="rule4">Transparência on-chain.</span></li>
+                    <h4 data-i18n="rulesTitle" class="font-tech text-xs text-pink-400 mb-4 uppercase tracking-wider">Regras do Pool</h4>
+                    <ul class="space-y-3 text-[11px] text-gray-300">
+                        <li class="flex items-center gap-2"><div class="h-1.5 w-1.5 bg-pink-500 rounded-full"></div> <span data-i18n="rule1">60% acumula para Jackpot.</span></li>
+                        <li class="flex items-center gap-2"><div class="h-1.5 w-1.5 bg-pink-500 rounded-full"></div> <span data-i18n="rule2">39% sai toda semana.</span></li>
+                        <li class="flex items-center gap-2"><div class="h-1.5 w-1.5 bg-pink-500 rounded-full"></div> <span data-i18n="rule4">Transparência on-chain.</span></li>
                     </ul>
                 </div>
             </div>
         </section>
 
-        <!-- Lógica de Premiação Detalhada e Tabela Dinâmica -->
+        <!-- Lógica de Premiação Detalhada -->
         <section class="mb-8">
             <div class="glass rounded-[30px] p-6 border-l-4 border-purple-500">
-                <p data-i18n="winLogic" class="text-xs md:text-sm text-gray-300 font-medium mb-6 italic leading-relaxed">
+                <p data-i18n="winLogic" class="text-xs md:text-sm text-gray-200 font-medium mb-6 italic leading-relaxed">
                     Ganha o Jackpot acumulado (60%) quem acertar 15 pontos; caso não haja vencedor, o Prêmio Semanal (39%) é pago obrigatoriamente a quem fizer a maior pontuação da rodada (14, 13 ou 12 acertos).
                 </p>
-                <div class="overflow-hidden rounded-xl border border-white/5 text-xs">
+                <div class="overflow-hidden rounded-xl border border-white/10 text-xs">
                     <table class="w-full text-left">
-                        <thead class="bg-white/5 text-gray-400 uppercase font-tech text-[9px]">
+                        <thead class="bg-white/10 text-gray-300 uppercase font-tech text-[9px]">
                             <tr>
                                 <th class="p-3" data-i18n="thHits">Acertos</th>
                                 <th class="p-3" data-i18n="thPerc">Porcentagem</th>
                                 <th class="p-3" data-i18n="thRule">Regra de Ouro</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/5 text-gray-300">
+                        <tbody class="divide-y divide-white/10 text-gray-300">
                             <tr>
                                 <td class="p-3 font-bold text-purple-400">15</td>
-                                <td class="p-3">60% (Jackpot)</td>
+                                <td class="p-3 text-white">60% (Jackpot)</td>
                                 <td class="p-3" data-i18n="ruleAccumulates">Acumula se ninguém ganhar</td>
                             </tr>
                             <tr>
-                                <td class="p-3 font-bold text-pink-500" data-i18n="rowClosest">Mais Próximo</td>
-                                <td class="p-3">39% (Semanal)</td>
+                                <td class="p-3 font-bold text-pink-400" data-i18n="rowClosest">Mais Próximo</td>
+                                <td class="p-3 text-white">39% (Semanal)</td>
                                 <td class="p-3" data-i18n="ruleAlwaysPays">Sempre sai para o maior pontuador</td>
                             </tr>
                             <tr>
-                                <td class="p-3 font-bold text-gray-500" data-i18n="rowFee">Manutenção</td>
-                                <td class="p-3">1% (Taxa)</td>
+                                <td class="p-3 font-bold text-gray-400" data-i18n="rowFee">Manutenção</td>
+                                <td class="p-3 text-white">1% (Taxa)</td>
                                 <td class="p-3" data-i18n="ruleProtocol">Segurança do protocolo</td>
                             </tr>
                         </tbody>
@@ -176,13 +190,13 @@
 
         <!-- Histórico On-Chain -->
         <section class="mb-12 glass rounded-[30px] p-6">
-            <h3 class="text-sm font-tech font-bold mb-6 flex items-center gap-2">
-                <span class="h-1.5 w-1.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></span>
+            <h3 class="text-sm font-tech font-bold mb-6 flex items-center gap-2 text-white">
+                <span class="h-2 w-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></span>
                 <span data-i18n="historyTitle">HISTÓRICO DE PAGAMENTOS</span>
             </h3>
             <div class="overflow-x-auto text-xs">
-                <table class="w-full text-left text-gray-400">
-                    <thead class="text-[9px] text-gray-600 uppercase tracking-widest border-b border-white/5">
+                <table class="w-full text-left text-gray-300">
+                    <thead class="text-[9px] text-gray-400 uppercase tracking-widest border-b border-white/10">
                         <tr>
                             <th class="pb-3" data-i18n="thWallet">Carteira</th>
                             <th class="pb-3" data-i18n="thType">Tipo</th>
@@ -190,23 +204,23 @@
                         </tr>
                     </thead>
                     <tbody id="historyBody">
-                        <!-- Gerado por JS Dinâmico -->
+                        <!-- Gerado Dinamicamente -->
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <!-- Rodapé Legal e Jurisdição -->
-        <footer class="text-center border-t border-white/5 pt-8">
-            <h5 data-i18n="legalTitle" class="text-[9px] font-tech text-gray-500 mb-3 uppercase tracking-[0.4em]">Aviso Legal</h5>
-            <p data-i18n="legalText" class="text-[9px] text-gray-600 max-w-xl mx-auto italic leading-loose">
+        <!-- Rodapé Legal -->
+        <footer class="text-center border-t border-white/10 pt-8">
+            <h5 data-i18n="legalTitle" class="text-[9px] font-tech text-gray-400 mb-3 uppercase tracking-[0.4em]">Aviso Legal</h5>
+            <p data-i18n="legalText" class="text-[9px] text-gray-500 max-w-xl mx-auto italic leading-loose">
                 A MEGACRYPTO é um protocolo descentralizado operando na blockchain Polygon. Não possuímos custódia sobre fundos. O jogo de azar envolve risco financeiro. Ao utilizar, você declara ser maior de 18 anos e estar em conformidade com as leis locais. Sorteios gerados de forma provadamente justa via Chainlink VRF.
             </p>
         </footer>
     </main>
 
-    <script type="module">
-        // --- 5 IDIOMAS INTEGRADOS (i18n) ---
+    <script>
+        // --- SISTEMA DE TRADUÇÃO (i18n) ---
         const translations = {
             pt: {
                 jackpotLabel: "Prêmio Acumulado", winnerTitle: "VOCÊ GANHOU!", winnerSub: "Seu prêmio está pronto para saque.",
@@ -218,7 +232,7 @@
                 btnApprove: "1. APROVAR", btnBuy: "2. JOGAR AGORA",
                 winLogic: "Ganha o Jackpot acumulado (60%) quem acertar 15 pontos; caso não haja vencedor, o Prêmio Semanal (39%) é pago obrigatoriamente a quem fizer a maior pontuação da rodada (14, 13 ou 12 acertos).",
                 thHits: "Acertos", thPerc: "Porcentagem", thRule: "Regra de Ouro",
-                ruleAccumulates: "Acumula se ninguém ganhar", ruleAlwaysPays: "Sempre sai para o maior pontuador",
+                ruleAccumulates: "Acumula se ninguém ganhar", ruleAlwaysPays: "Sempre sai para o maior pontuador", ruleProtocol: "Segurança do protocolo",
                 rowClosest: "Mais Próximo", rowFee: "Manutenção"
             },
             en: {
@@ -231,7 +245,7 @@
                 btnApprove: "1. APPROVE", btnBuy: "2. PLAY NOW",
                 winLogic: "The accumulated Jackpot (60%) is won by hitting 15 points; if there is no winner, the Weekly Prize (39%) is mandatory paid to the person with the highest score of the round (14, 13, or 12 hits).",
                 thHits: "Hits", thPerc: "Percentage", thRule: "Golden Rule",
-                ruleAccumulates: "Accumulates if no one wins", ruleAlwaysPays: "Always pays to the highest scorer",
+                ruleAccumulates: "Accumulates if no one wins", ruleAlwaysPays: "Always pays to the highest scorer", ruleProtocol: "Protocol security",
                 rowClosest: "Closest", rowFee: "Maintenance"
             },
             es: {
@@ -244,7 +258,7 @@
                 btnApprove: "1. APROBAR", btnBuy: "2. JUGAR AHORA",
                 winLogic: "El Jackpot acumulado (60%) se gana acertando 15 puntos; si no hay ganador, el Premio Semanal (39%) se paga obligatoriamente a quien tenga la puntuación más alta de la ronda (14, 13 o 12 aciertos).",
                 thHits: "Aciertos", thPerc: "Porcentaje", thRule: "Regla de Oro",
-                ruleAccumulates: "Se acumula si nadie gana", ruleAlwaysPays: "Siempre sale para el mayor puntaje",
+                ruleAccumulates: "Se acumula si nadie gana", ruleAlwaysPays: "Siempre sale para el mayor puntaje", ruleProtocol: "Seguridad del protocolo",
                 rowClosest: "Más Cercano", rowFee: "Mantenimiento"
             },
             zh: {
@@ -257,7 +271,7 @@
                 btnApprove: "1. 批准", btnBuy: "2. 立即玩",
                 winLogic: "命中15个点即可赢得累积大奖（60%）；如果没有赢家，每周奖金（39%）将强制支付给该轮得分最高的人（命中14、13或12个点）。",
                 thHits: "命中", thPerc: "百分比", thRule: "黄金法则",
-                ruleAccumulates: "无人中奖则累积", ruleAlwaysPays: "始终支付给最高分者",
+                ruleAccumulates: "无人中奖则累积", ruleAlwaysPays: "始终支付给最高分者", ruleProtocol: "协议安全",
                 rowClosest: "最接近者", rowFee: "维护费"
             },
             fr: {
@@ -270,7 +284,7 @@
                 btnApprove: "1. APPROUVER", btnBuy: "2. JOUER",
                 winLogic: "Le Jackpot accumulé (60%) est remporté en atteignant 15 points ; s'il n'y a pas de gagnant, le Prix Hebdomadaire (39%) est obligatoirement versé à la personne ayant le score le plus élevé de la manche (14, 13 ou 12 points).",
                 thHits: "Hits", thPerc: "Pourcentage", thRule: "Règle d'Or",
-                ruleAccumulates: "Accumule si aucun gagnant", ruleAlwaysPays: "Toujours versé au meilleur score",
+                ruleAccumulates: "Accumule si aucun gagnant", ruleAlwaysPays: "Toujours versé au meilleur score", ruleProtocol: "Sécurité du protocole",
                 rowClosest: "Plus Proche", rowFee: "Maintenance"
             }
         };
@@ -287,49 +301,22 @@
 
         document.getElementById('langSelector').onchange = (e) => setLanguage(e.target.value);
 
-        // --- INTEGRAÇÃO TELEGRAM MINI APP (TMA) ---
+        // --- INTEGRAÇÃO TELEGRAM MINI APP (Com Trava Escura) ---
         const tg = window.Telegram.WebApp;
         if (tg) {
             tg.expand();
             tg.ready();
-            // Adapta o background do app ao tema nativo do Telegram do usuário
-            document.body.style.backgroundColor = tg.themeParams.bg_color || "#030303";
+            if (tg.setHeaderColor) tg.setHeaderColor('#030303');
+            if (tg.setBackgroundColor) tg.setBackgroundColor('#030303');
+            document.body.style.backgroundColor = "#030303";
         }
 
-        // --- WEB3 CONEXÃO MOBILE (WalletConnect AppKit 2026) ---
-        const projectId = '815c44cf81765c928420e659b657e2a9'; // Project ID público do WalletConnect para testes
-        
-        // ABIs Mínimas para interação com o Contrato e USDT
-        const contractABI = [
-            "function comprarBilhete(uint8[] calldata numeros) external",
-            "function reclamarPremio() external",
-            "function jackpotAcumulado() view returns (uint256)",
-            "function poolSemanal() view returns (uint256)",
-            "function precoBilhete() view returns (uint256)",
-            "function premiosParaSacar(address) view returns (uint256)",
-            "function getHistoricoCount() view returns (uint256)",
-            "function ultimosGanhadores(uint256) view returns (address, uint256, uint256, string)"
-        ];
-        
-        const usdtABI = [
-            "function approve(address spender, uint256 amount) external returns (bool)",
-            "function allowance(address owner, address spender) view returns (uint256)"
-        ];
+        // --- CONEXÃO WEB3 & BLOCKCHAIN ---
+        const CONTRACT_ADDRESS = "0xYourDeployedContractAddressHere";
+        const USDT_ADDRESS = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
 
-        const CONTRACT_ADDRESS = "0xYourDeployedContractAddressHere"; // Substitua pelo endereço do seu contrato após deploy
-        const USDT_ADDRESS = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; // USDT oficial na Polygon Mainnet
+        let provider, signer, userAddress;
 
-        let provider, signer, userAddress, contract, usdtContract;
-
-        // Configuração do Web3Modal para Polygon (Wagmi)
-        const metadata = {
-            name: 'MEGACRYPTO',
-            description: 'Decentralized Blockchain Lottery',
-            url: window.location.origin,
-            icons: ['https://avatars.githubusercontent.com/u/37784886']
-        };
-
-        // Função de conexão via WalletConnect/MetaMask/Telegram Wallet
         async function connectWallet() {
             if (window.ethereum) {
                 try {
@@ -340,125 +327,26 @@
                     document.getElementById('connectBtn').innerText = userAddress.slice(0,6) + "..." + userAddress.slice(-4);
                     document.getElementById('connectBtn').classList.add('bg-green-600');
                     
-                    // Inicializa os contratos
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer);
-                    usdtContract = new ethers.Contract(USDT_ADDRESS, usdtABI, signer);
-                    
-                    checkBlockchainData();
+                    loadDemoHistory();
                 } catch (error) {
-                    console.error("Erro ao conectar carteira:", error);
+                    console.error("Erro ao conectar:", error);
                 }
             } else {
-                alert("Abra este site dentro do navegador do MetaMask ou use o Telegram Wallet!");
+                alert("Abra este site dentro do navegador do MetaMask ou Trust Wallet!");
             }
         }
 
         document.getElementById('connectBtn').onclick = connectWallet;
 
-        // Leitura de Dados da Blockchain em Tempo Real
-        async function checkBlockchainData() {
-            if (!contract || !userAddress) return;
-
-            try {
-                // Busca o valor atualizado do Jackpot acumulado no contrato
-                const jackpot = await contract.jackpotAcumulado();
-                document.getElementById('jackpotValue').innerText = ethers.formatUnits(jackpot, 6);
-
-                const preco = await contract.precoBilhete();
-                document.getElementById('ticketCostText').innerText = ethers.formatUnits(preco, 6) + " USDT";
-
-                // Verifica se o usuário conectado é um ganhador
-                const premioDisponivel = await contract.premiosParaSacar(userAddress);
-                if (premioDisponivel > 0) {
-                    document.getElementById('winnerPanel').classList.remove('hidden');
-                }
-
-                // Carrega o histórico de transparência
-                loadHistory();
-
-            } catch (err) {
-                console.warn("Contrato ainda não ativo ou endereço inválido:", err.message);
-            }
-        }
-
-        // --- LÓGICA DE TRANSAÇÃO WEB3 ---
-
-        // 1. Aprovar USDT (Allowance)
-        document.getElementById('btnApprove').onclick = async () => {
-            if (!usdtContract) return;
-            try {
-                const preco = await contract.precoBilhete();
-                const tx = await usdtContract.approve(CONTRACT_ADDRESS, preco);
-                document.getElementById('btnApprove').innerText = "Aprovando...";
-                await tx.wait();
-                
-                document.getElementById('btnApprove').classList.add('hidden');
-                const buyBtn = document.getElementById('btnBuy');
-                buyBtn.disabled = false;
-                buyBtn.classList.remove('opacity-50');
-            } catch (err) {
-                alert("Erro ao aprovar USDT: " + err.message);
-            }
-        };
-
-        // 2. Comprar Bilhete (Apostar)
-        document.getElementById('btnBuy').onclick = async () => {
-            if (!contract || selectedNumbers.length !== 15) return;
-            try {
-                const tx = await contract.comprarBilhete(selectedNumbers);
-                document.getElementById('btnBuy').innerText = "Processando...";
-                await tx.wait();
-                alert("Aposta registrada com sucesso na Polygon!");
-                location.reload();
-            } catch (err) {
-                alert("Erro ao enviar aposta: " + err.message);
-            }
-        };
-
-        // 3. Resgatar Prêmio
-        document.getElementById('btnClaim').onclick = async () => {
-            if (!contract) return;
-            try {
-                const tx = await contract.reclamarPremio();
-                await tx.wait();
-                alert("Prêmio transferido com sucesso para sua carteira!");
-                location.reload();
-            } catch (err) {
-                alert("Erro ao sacar prêmio.");
-            }
-        };
-
-        // --- HISTÓRICO DE TRANSPARÊNCIA DINÂMICO ---
-        async function loadHistory() {
+        function loadDemoHistory() {
             const tableBody = document.getElementById('historyBody');
-            tableBody.innerHTML = '';
-
-            try {
-                const count = await contract.getHistoricoCount();
-                // Mostra as últimas 5 transações registradas no contrato
-                const start = count > 5 ? count - 5n : 0n;
-
-                for (let i = count - 1n; i >= start; i--) {
-                    const h = await contract.ultimosGanhadores(i);
-                    const row = `
-                        <tr class="border-b border-white/5">
-                            <td class="py-3 font-mono text-purple-400">${h[0].slice(0,6)}...${h[0].slice(-4)}</td>
-                            <td class="py-3"><span class="bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded text-[9px] font-bold">${h[3]}</span></td>
-                            <td class="py-3 text-right font-bold text-white">${ethers.formatUnits(h[1], 6)} USDT</td>
-                        </tr>
-                    `;
-                    tableBody.innerHTML += row;
-                }
-            } catch (err) {
-                // Dados estáticos de demonstração caso o contrato ainda não esteja publicado
-                tableBody.innerHTML = `
-                    <tr class="border-b border-white/5">
-                        <td class="py-3 font-mono text-purple-400">0x71C...8a4f</td>
-                        <td class="py-3"><span class="bg-pink-500/10 text-pink-400 px-2 py-0.5 rounded text-[9px] font-bold">SEMANAL</span></td>
-                        <td class="py-3 text-right font-bold text-white">1,450.00 USDT</td>
-                    </tr>
-                `;
-            }
+            tableBody.innerHTML = `
+                <tr class="border-b border-white/10">
+                    <td class="py-3 font-mono text-purple-400">0x71C...8a4f</td>
+                    <td class="py-3"><span class="bg-pink-500/20 text-pink-400 px-2 py-0.5 rounded text-[9px] font-bold">SEMANAL</span></td>
+                    <td class="py-3 text-right font-bold text-white">1,450.00 USDT</td>
+                </tr>
+            `;
         }
 
         // --- GRID DE NÚMEROS (1 A 25) ---
@@ -470,7 +358,7 @@
             for (let i = 1; i <= 25; i++) {
                 const btn = document.createElement('button');
                 btn.innerText = i < 10 ? '0' + i : i;
-                btn.className = 'h-12 w-full rounded-xl glass font-tech text-md border border-white/5 hover:border-purple-500/30 transition-all';
+                btn.className = 'h-12 w-full rounded-xl glass font-tech text-md border border-white/10 text-white hover:border-purple-500/50 transition-all';
                 btn.onclick = () => toggleNumber(i, btn);
                 grid.appendChild(btn);
             }
@@ -497,11 +385,17 @@
             approveBtn.classList.toggle('bg-white/10', isReady);
         }
 
+        function share() {
+            const msg = encodeURIComponent("I just won on MEGACRYPTO! 🏆 The safest lottery on Polygon. Check it out: www.megacrypto.io");
+            window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
+        }
+
         window.onload = () => {
             const savedLang = localStorage.getItem('megacrypto_lang') || 'pt';
             setLanguage(savedLang);
             document.getElementById('langSelector').value = savedLang;
             initGrid();
+            loadDemoHistory();
         };
     </script>
 </body>
