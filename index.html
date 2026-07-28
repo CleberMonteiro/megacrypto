@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGACRYPTO | Telegram Web3 Lottery</title>
 
+    <!-- Força a renderização em Modo Escuro em qualquer dispositivo -->
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#030303">
 
@@ -69,7 +70,6 @@
                     <option value="zh">🇨🇳 中文</option>
                     <option value="fr">🇫🇷 FR</option>
                 </select>
-                <!-- Botão Inteligente de Conexão -->
                 <button id="connectBtn" class="btn-grad text-white px-4 py-2 rounded-full font-bold text-xs shadow-md">
                     Connect Wallet
                 </button>
@@ -256,7 +256,7 @@
                 legalTitle: "Aviso Legal", legalText: "Software autónomo en Polygon. Solo +18. Juega con responsabilidad. Sorteos auditables via Chainlink.",
                 btnApprove: "1. APROBAR", btnBuy: "2. JUGAR AHORA",
                 winLogic: "El Jackpot acumulado (60%) se gana acertando 15 puntos; si no hay ganador, el Premio Semanal (39%) se paga obligatoriamente a quien tenga la puntuación más alta de la ronda (14, 13 o 12 aciertos).",
-                thHits: "Aciertos", thPerc: "Porcentaje", thRule: "Regra de Oro",
+                thHits: "Aciertos", thPerc: "Porcentaje", thRule: "Regla de Oro",
                 ruleAccumulates: "Se acumula si nadie gana", ruleAlwaysPays: "Siempre sale para el mayor puntaje", ruleProtocol: "Seguridad del protocolo",
                 rowClosest: "Más Cercano", rowFee: "Mantenimiento"
             },
@@ -310,11 +310,11 @@
             document.body.style.backgroundColor = "#030303";
         }
 
-        // --- CONEXÃO INTELIGENTE DE CARTEIRAS (DEEP LINKING PARA MOBILE) ---
+        // --- CONEXÃO INTELIGENTE DE CARTEIRAS ---
         let provider, signer, userAddress;
 
         async function connectWallet() {
-            // 1. Tenta conectar via Injected Provider (se estiver no navegador da MetaMask/Trust Wallet)
+            // 1. Se estiver no PC ou em um navegador Web3 com extensão da MetaMask injetada
             if (window.ethereum) {
                 try {
                     provider = new ethers.BrowserProvider(window.ethereum);
@@ -324,17 +324,20 @@
                     updateConnectedUI(userAddress);
                     return;
                 } catch (error) {
-                    console.log("Usuário cancelou conexão no app", error);
+                    console.log("Usuário cancelou a conexão no navegador Web3", error);
+                    return;
                 }
             }
 
-            // 2. Se estiver dentro do Telegram comum (Mobile), redireciona diretamente via Deep Link para a MetaMask
-            const currentUrl = window.location.href;
-            const metamaskDeepLink = "https://metamask.app.link/dapp/" + currentUrl.replace(/^https?:\/\//, '');
+            // 2. Se estiver dentro do aplicativo do Telegram no celular
+            const rawUrl = window.location.href.replace(/^https?:\/\//, '');
+            const metamaskUrl = `https://metamask.app.link/dapp/${rawUrl}`;
 
-            // Confirmação para redirecionar o jogador para a carteira
-            if (confirm("Para conectar sua carteira com segurança, escolha abrir na MetaMask ou Trust Wallet. Deseja abrir a MetaMask agora?")) {
-                window.location.href = metamaskDeepLink;
+            // Usa a API nativa do Telegram para abrir a MetaMask sem gerar o erro de URL SCHEME
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                window.Telegram.WebApp.openLink(metamaskUrl);
+            } else {
+                window.location.href = metamaskUrl;
             }
         }
 
