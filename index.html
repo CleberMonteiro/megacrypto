@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGACRYPTO | Telegram Web3 Lottery</title>
 
-    <!-- Força a renderização em Modo Escuro em qualquer dispositivo -->
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#030303">
 
@@ -13,10 +12,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SDK Oficial do Telegram Mini Apps -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Ethers.js v6 + Web3Modal / WalletConnect para Conexão Mobile Universal -->
+    <!-- Ethers v6 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@web3modal/ethers@5.1.11/dist/index.umd.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     
@@ -64,7 +61,7 @@
                 MEGA<span class="text-purple-500">CRYPTO</span>
             </div>
             
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 <select id="langSelector" class="bg-black/80 border border-white/20 rounded-lg text-xs p-1.5 text-gray-200 focus:outline-none">
                     <option value="pt">🇧🇷 PT</option>
                     <option value="en">🇺🇸 EN</option>
@@ -72,9 +69,9 @@
                     <option value="zh">🇨🇳 中文</option>
                     <option value="fr">🇫🇷 FR</option>
                 </select>
-                <!-- Botão Universal Web3Modal -->
+                <!-- Botão Inteligente de Conexão -->
                 <button id="connectBtn" class="btn-grad text-white px-4 py-2 rounded-full font-bold text-xs shadow-md">
-                    Connect
+                    Connect Wallet
                 </button>
             </div>
         </div>
@@ -259,7 +256,7 @@
                 legalTitle: "Aviso Legal", legalText: "Software autónomo en Polygon. Solo +18. Juega con responsabilidad. Sorteos auditables via Chainlink.",
                 btnApprove: "1. APROBAR", btnBuy: "2. JUGAR AHORA",
                 winLogic: "El Jackpot acumulado (60%) se gana acertando 15 puntos; si no hay ganador, el Premio Semanal (39%) se paga obligatoriamente a quien tenga la puntuación más alta de la ronda (14, 13 o 12 aciertos).",
-                thHits: "Aciertos", thPerc: "Porcentaje", thRule: "Regla de Oro",
+                thHits: "Aciertos", thPerc: "Porcentaje", thRule: "Regra de Oro",
                 ruleAccumulates: "Se acumula si nadie gana", ruleAlwaysPays: "Siempre sale para el mayor puntaje", ruleProtocol: "Seguridad del protocolo",
                 rowClosest: "Más Cercano", rowFee: "Mantenimiento"
             },
@@ -313,62 +310,42 @@
             document.body.style.backgroundColor = "#030303";
         }
 
-        // --- CONFIGURAÇÃO WEB3MODAL / WALLETCONNECT ---
-        const projectId = '815c44cf81765c928420e659b657e2a9'; // Project ID Público WalletConnect
-
-        const polygonChain = {
-            chainId: 137,
-            name: 'Polygon',
-            currency: 'MATIC',
-            explorerUrl: 'https://polygonscan.com',
-            rpcUrl: 'https://polygon-rpc.com'
-        };
-
-        const metadata = {
-            name: 'MEGACRYPTO',
-            description: 'Decentralized Blockchain Lottery',
-            url: window.location.origin,
-            icons: ['https://avatars.githubusercontent.com/u/37784886']
-        };
-
-        let modal;
-        try {
-            if (window.Web3ModalEthers) {
-                const { createWeb3Modal, defaultConfig } = window.Web3ModalEthers;
-                modal = createWeb3Modal({
-                    ethersConfig: defaultConfig({ metadata }),
-                    chains: [polygonChain],
-                    projectId,
-                    themeMode: 'dark'
-                });
-            }
-        } catch (e) {
-            console.warn("Web3Modal inicializando...", e);
-        }
-
+        // --- CONEXÃO INTELIGENTE DE CARTEIRAS (DEEP LINKING PARA MOBILE) ---
         let provider, signer, userAddress;
 
-        // Ação do Botão Conectar: Abre a janela universal
-        async function handleConnect() {
-            if (modal) {
-                modal.open();
-            } else if (window.ethereum) {
+        async function connectWallet() {
+            // 1. Tenta conectar via Injected Provider (se estiver no navegador da MetaMask/Trust Wallet)
+            if (window.ethereum) {
                 try {
                     provider = new ethers.BrowserProvider(window.ethereum);
                     signer = await provider.getSigner();
                     userAddress = await signer.getAddress();
                     
-                    document.getElementById('connectBtn').innerText = userAddress.slice(0,6) + "..." + userAddress.slice(-4);
-                    document.getElementById('connectBtn').classList.add('bg-green-600');
-                } catch (err) {
-                    console.error("Erro na conexão:", err);
+                    updateConnectedUI(userAddress);
+                    return;
+                } catch (error) {
+                    console.log("Usuário cancelou conexão no app", error);
                 }
-            } else {
-                alert("Conectando... Escolha sua carteira no menu!");
+            }
+
+            // 2. Se estiver dentro do Telegram comum (Mobile), redireciona diretamente via Deep Link para a MetaMask
+            const currentUrl = window.location.href;
+            const metamaskDeepLink = "https://metamask.app.link/dapp/" + currentUrl.replace(/^https?:\/\//, '');
+
+            // Confirmação para redirecionar o jogador para a carteira
+            if (confirm("Para conectar sua carteira com segurança, escolha abrir na MetaMask ou Trust Wallet. Deseja abrir a MetaMask agora?")) {
+                window.location.href = metamaskDeepLink;
             }
         }
 
-        document.getElementById('connectBtn').onclick = handleConnect;
+        function updateConnectedUI(addr) {
+            const btn = document.getElementById('connectBtn');
+            btn.innerText = addr.slice(0,6) + "..." + addr.slice(-4);
+            btn.classList.remove('btn-grad');
+            btn.classList.add('bg-green-600');
+        }
+
+        document.getElementById('connectBtn').onclick = connectWallet;
 
         function loadDemoHistory() {
             const tableBody = document.getElementById('historyBody');
