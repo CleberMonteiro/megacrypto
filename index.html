@@ -13,15 +13,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SDK Oficial do Telegram Mini Apps -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Ethers.js v6 para Web3 -->
+    
+    <!-- Ethers.js v6 + Web3Modal / WalletConnect para Conexão Mobile Universal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@web3modal/ethers@5.1.11/dist/index.umd.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     
     <style>
         :root { --p-color: #a855f7; --s-color: #ec4899; }
         
-        /* Trava o fundo e texto para nunca ficarem brancos */
         html, body { 
             background-color: #030303 !important; 
             color: #f3f4f6 !important; 
@@ -71,6 +72,7 @@
                     <option value="zh">🇨🇳 中文</option>
                     <option value="fr">🇫🇷 FR</option>
                 </select>
+                <!-- Botão Universal Web3Modal -->
                 <button id="connectBtn" class="btn-grad text-white px-4 py-2 rounded-full font-bold text-xs shadow-md">
                     Connect
                 </button>
@@ -301,7 +303,7 @@
 
         document.getElementById('langSelector').onchange = (e) => setLanguage(e.target.value);
 
-        // --- INTEGRAÇÃO TELEGRAM MINI APP (Com Trava Escura) ---
+        // --- INTEGRAÇÃO TELEGRAM MINI APP ---
         const tg = window.Telegram.WebApp;
         if (tg) {
             tg.expand();
@@ -311,14 +313,46 @@
             document.body.style.backgroundColor = "#030303";
         }
 
-        // --- CONEXÃO WEB3 & BLOCKCHAIN ---
-        const CONTRACT_ADDRESS = "0xYourDeployedContractAddressHere";
-        const USDT_ADDRESS = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
+        // --- CONFIGURAÇÃO WEB3MODAL / WALLETCONNECT ---
+        const projectId = '815c44cf81765c928420e659b657e2a9'; // Project ID Público WalletConnect
+
+        const polygonChain = {
+            chainId: 137,
+            name: 'Polygon',
+            currency: 'MATIC',
+            explorerUrl: 'https://polygonscan.com',
+            rpcUrl: 'https://polygon-rpc.com'
+        };
+
+        const metadata = {
+            name: 'MEGACRYPTO',
+            description: 'Decentralized Blockchain Lottery',
+            url: window.location.origin,
+            icons: ['https://avatars.githubusercontent.com/u/37784886']
+        };
+
+        let modal;
+        try {
+            if (window.Web3ModalEthers) {
+                const { createWeb3Modal, defaultConfig } = window.Web3ModalEthers;
+                modal = createWeb3Modal({
+                    ethersConfig: defaultConfig({ metadata }),
+                    chains: [polygonChain],
+                    projectId,
+                    themeMode: 'dark'
+                });
+            }
+        } catch (e) {
+            console.warn("Web3Modal inicializando...", e);
+        }
 
         let provider, signer, userAddress;
 
-        async function connectWallet() {
-            if (window.ethereum) {
+        // Ação do Botão Conectar: Abre a janela universal
+        async function handleConnect() {
+            if (modal) {
+                modal.open();
+            } else if (window.ethereum) {
                 try {
                     provider = new ethers.BrowserProvider(window.ethereum);
                     signer = await provider.getSigner();
@@ -326,17 +360,15 @@
                     
                     document.getElementById('connectBtn').innerText = userAddress.slice(0,6) + "..." + userAddress.slice(-4);
                     document.getElementById('connectBtn').classList.add('bg-green-600');
-                    
-                    loadDemoHistory();
-                } catch (error) {
-                    console.error("Erro ao conectar:", error);
+                } catch (err) {
+                    console.error("Erro na conexão:", err);
                 }
             } else {
-                alert("Abra este site dentro do navegador do MetaMask ou Trust Wallet!");
+                alert("Conectando... Escolha sua carteira no menu!");
             }
         }
 
-        document.getElementById('connectBtn').onclick = connectWallet;
+        document.getElementById('connectBtn').onclick = handleConnect;
 
         function loadDemoHistory() {
             const tableBody = document.getElementById('historyBody');
